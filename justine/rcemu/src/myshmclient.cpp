@@ -329,6 +329,11 @@ void justine::sampleclient::MyShmClient::start10 ( boost::asio::io_service& io_s
 
   boost::asio::ip::tcp::socket socket ( io_service );
   boost::asio::connect ( socket, iterator );
+  
+  
+   //  for (std::vector<unsigned int>::iterator it = cops.begin() ; it != cops.end(); ++it) //for ( auto cop:cops ) auto i = 0; i < cops.size(); i++)
+  
+  
 
   std::vector<Cop> cops = initcops ( socket );
 
@@ -340,47 +345,85 @@ void justine::sampleclient::MyShmClient::start10 ( boost::asio::io_service& io_s
   std::vector<Gangster> gngstrs;
 
   for ( ;; )
+  {
+    std::this_thread::sleep_for ( std::chrono::milliseconds ( 200 ) );
+    
+    // lekérjük a gengsztereket, rendezve
+    gngstrs = gangsters(socket, cops[0], t);
+    
+    // ha kevesebben vannak, mint 10...
+    if (gngstrs.size() < 99) //------------------------------------------------------------------------
     {
-      gChased.clear();
-      std::this_thread::sleep_for ( std::chrono::milliseconds ( 200 ) );
-
-      for ( auto cop:cops )
+      // de azért van legalább 1
+      if (gngstrs.size() > 0) 
+      {
+        // ráállítjuk a rendőrt az első gangszterre(összes rendőr ugyan azt fogja kapni)
+        g = gngstrs[0].to;
+      } else {
+        g = 0;
+      }
+      // végigmegyünk a rendőrökön
+      for (auto cop : cops) 
+      {
+	//Lekérjük az aktuális rendőrnek az adatait, nekünk a poziciója kell (t) hova ment
+        car (socket, cop, &f, &t, &s);
+        // kiküldjük az utasítást a szervernek
+        if ( g > 0 )
         {
-          car ( socket, cop, &f, &t, &s );
+	  //a legrövidebb utat készítjük
+          std::vector<osmium::unsigned_object_id_type> path = hasDijkstraPath ( t, g );
 
-          gngstrs = gangsters ( socket, cop, t );
-          
-          g = 0;
+          if ( path.size() > 1 )
+          {
 
-          for (size_t gi = 0; gi < gngstrs.size(); gi++) {
-              auto it = std::find(gChased.begin(), gChased.end(),
-                                  gngstrs[gi].to);
-              if (it == gChased.end()) {
-                  g = gngstrs[gi].to;
-                  gChased.push_back(gngstrs[gi].to);
-                  break;
-              }
+            std::copy ( path.begin(), path.end(),
+                        std::ostream_iterator<osmium::unsigned_object_id_type> ( std::cout, " -> " ) );
+	    
+            route ( socket, cop, path );//elküldjük a szervernek az útvonalat hogy azon üldözzön
           }
+        }
+      }
+    } else {//--------------------------------------------------------------------------------------------
+      gChased.clear();
 
-          //if ( gngstrs.size() > 0 )
-            //g = gngstrs[0].to;
-          //else
-            //g = 0;
+      for ( std::vector<Cop>::size_type i = 0; i < cops.size(); i++)
+      {
+        car ( socket, cops[i], &f, &t, &s );
 
-          if ( g > 0 )
-            {
+        gngstrs = gangsters ( socket, cops[i], t );
+        
+        g = 0;
 
-              std::vector<osmium::unsigned_object_id_type> path = hasDijkstraPath ( t, g );
-
-              if ( path.size() > 1 )
-                {
-
-                  std::copy ( path.begin(), path.end(),
-                              std::ostream_iterator<osmium::unsigned_object_id_type> ( std::cout, " -> " ) );
-
-                  route ( socket, cop, path );
-                }
+        for (size_t gi = 0; gi < gngstrs.size(); gi++) {
+            auto it = std::find(gChased.begin(), gChased.end(),
+                                gngstrs[gi].to);
+            if (it == gChased.end()) {
+                g = gngstrs[gi].to;
+                gChased.push_back(gngstrs[gi].to);
+                break;
             }
         }
-    }
+
+        //if ( gngstrs.size() > 0 )
+          //g = gngstrs[0].to;
+        //else
+          //g = 0;
+
+        if ( g > 0 )
+        {
+
+          std::vector<osmium::unsigned_object_id_type> path = hasDijkstraPath ( t, g );
+
+          if ( path.size() > 1 )
+          {
+
+            std::copy ( path.begin(), path.end(),
+                        std::ostream_iterator<osmium::unsigned_object_id_type> ( std::cout, " -> " ) );
+
+            route ( socket, cops[i], path );
+          }
+        }
+      }
+    }//--------------------------------------------------------------------------------------------------------
+  }
 }
