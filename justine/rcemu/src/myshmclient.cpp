@@ -30,6 +30,8 @@
  */
 
 #include <myshmclient.hpp>
+#include <iterator>
+
 //#include <trafficlexer.hpp>
 
 char data[524288];
@@ -331,7 +333,7 @@ void justine::sampleclient::MyShmClient::start10 ( boost::asio::io_service& io_s
   boost::asio::connect ( socket, iterator );
   
   
-   //  for (std::vector<unsigned int>::iterator it = cops.begin() ; it != cops.end(); ++it) //for ( auto cop:cops ) auto i = 0; i < cops.size(); i++)
+   //  for (std::vector<unsigned int>::iterator iterator = cops.begin() ; iterator != cops.end(); ++iterator) //for ( auto cop:cops ) auto i = 0; i < cops.size(); i++)
   
   
 
@@ -352,7 +354,7 @@ void justine::sampleclient::MyShmClient::start10 ( boost::asio::io_service& io_s
     gngstrs = gangsters(socket, cops[0], t);
     
     // ha kevesebben vannak, mint 10...
-    if (gngstrs.size() < 99) //------------------------------------------------------------------------
+    if (gngstrs.size() <= 85) //------------------------------------------------------------------------
     {
       // de azért van legalább 1
       if (gngstrs.size() > 0) 
@@ -385,12 +387,12 @@ void justine::sampleclient::MyShmClient::start10 ( boost::asio::io_service& io_s
       }
     } else {//--------------------------------------------------------------------------------------------
       gChased.clear();
-
-      for ( std::vector<Cop>::size_type i = 0; i < cops.size(); i++)
+      //for ( std::vector<Cop>::size_type i = 0; i < cops.size(); i++) 
+      for(std::vector<int>::iterator iterator = cops.begin() ; iterator != cops.end(); ++iterator)
       {
-        car ( socket, cops[i], &f, &t, &s );
+        car ( socket, *iterator, &f, &t, &s );
 
-        gngstrs = gangsters ( socket, cops[i], t );
+        gngstrs = gangsters ( socket, *iterator, t );
         
         g = 0;
 
@@ -420,7 +422,7 @@ void justine::sampleclient::MyShmClient::start10 ( boost::asio::io_service& io_s
             std::copy ( path.begin(), path.end(),
                         std::ostream_iterator<osmium::unsigned_object_id_type> ( std::cout, " -> " ) );
 
-            route ( socket, cops[i], path );
+            route ( socket, *iterator, path );
           }
         }
       }
